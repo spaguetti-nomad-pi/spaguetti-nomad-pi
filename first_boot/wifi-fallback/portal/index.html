@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>__HOSTNAME__ — WiFi</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="brand">__HOSTNAME__</p>
+      <h1>Configurar WiFi</h1>
+      <p id="status" class="status">Buscando redes…</p>
+    </header>
+
+    <section id="alert" class="alert" hidden></section>
+
+    <section>
+      <div class="row">
+        <h2>Redes</h2>
+        <button type="button" id="rescan" class="ghost">Actualizar</button>
+      </div>
+      <ul id="networks" class="networks"></ul>
+    </section>
+
+    <form id="form">
+      <label>
+        SSID
+        <input id="ssid" name="ssid" autocomplete="off" spellcheck="false" required>
+      </label>
+      <label id="password-wrap">
+        Contraseña
+        <input id="password" name="password" type="password" autocomplete="current-password">
+      </label>
+      <button type="submit" id="connect">Conectar</button>
+    </form>
+
+    <p class="hint">Si esta página no se abrió sola, entrá a <strong>http://10.42.0.1</strong></p>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

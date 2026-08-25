@@ -1,0 +1,15 @@
+[Unit]
+Description=WiFi fallback AP and captive portal
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/wifi-fallback/wifi-fallback.env
+WorkingDirectory=/opt/wifi-fallback
+ExecStart=/usr/bin/python3 /opt/wifi-fallback/src/wifi_fallback.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

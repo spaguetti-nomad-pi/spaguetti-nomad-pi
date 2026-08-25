@@ -1,0 +1,25 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.repository }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    # Upstream is shared and public: only forks have a runner / a Pi.
+    if: github.event.repository.fork
+    runs-on: [self-hosted, raspi]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Sync repo and install wifi-fallback
+        run: bash cicd/deploy.sh
