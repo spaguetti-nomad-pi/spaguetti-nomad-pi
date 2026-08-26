@@ -7,13 +7,21 @@ if [[ ${EUID} -ne 0 ]]; then
 fi
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 PREFIX=/opt/telegram
 ETC=/etc/telegram
 UNIT=/etc/systemd/system/telegram.service
 
-install -d -m 0755 "$PREFIX/src" "$ETC"
+install -d -m 0755 "$PREFIX/src" "$PREFIX/scripts" "$ETC"
 install -m 0644 "$SCRIPT_DIR/src/bot.py" "$PREFIX/src/bot.py"
 install -m 0644 "$SCRIPT_DIR/telegram.service" "$UNIT"
+
+if [[ -d $REPO_ROOT/scripts ]]; then
+  rm -rf "$PREFIX/scripts"
+  mkdir -p "$PREFIX/scripts"
+  cp -a "$REPO_ROOT/scripts/." "$PREFIX/scripts/"
+  find "$PREFIX/scripts" -type f -name '*.sh' -exec chmod 0755 {} +
+fi
 
 if [[ ! -f $ETC/telegram.env ]]; then
   ENV_SRC=$SCRIPT_DIR/telegram.env

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Owner-only Telegram bot. Long-polls Telegram; no public URL needed."""
+"""Owner-only Telegram bot. Commands are scripts under scripts/<category>/."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import logging
 import os
 import signal
 import socket
+import subprocess
 import sys
 import time
 import urllib.error
@@ -16,6 +17,10 @@ from pathlib import Path
 
 log = logging.getLogger("telegram")
 API = "https://api.telegram.org/bot{token}/{method}"
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPTS = ROOT / "scripts"
+LIMIT = 3500
+TIMEOUT = 10
 STOP = False
 
 
@@ -49,17 +54,75 @@ def send(token: str, chat_id: int, text: str) -> None:
     api(token, "sendMessage", {"chat_id": chat_id, "text": text}, timeout=30)
 
 
-def status_text() -> str:
-    host = socket.gethostname().split(".")[0]
+def one_liner(path: Path) -> str:
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        s = line.strip()
+        if s.startswith("#") and not s.startswith("#!"):
+            return s.lstrip("# ").strip()
+    return ""
+
+
+def discover(root: Path) -> dict[str, Path]:
+    found: dict[str, Path] = {}
+    if not root.is_dir():
+        return found
+    for sh in sorted(root.glob("*/*.sh")):
+        name = "/" + sh.stem
+        if name in found:
+            log.warning("skip duplicate %s (%s)", name, sh)
+            continue
+        found[name] = sh
+    return found
+
+
+def help_text(cmds: dict[str, Path]) -> str:
+    cats: dict[str, list[Path]] = {}
+    for path in cmds.values():
+        cats.setdefault(path.parent.name, []).append(path)
+    lines: list[str] = []
+    for cat in sorted(cats):
+        lines.append(f"{cat}:")
+        for path in sorted(cats[cat], key=lambda p: p.stem):
+            hint = one_liner(path)
+            entry = f"  /{path.stem}"
+            lines.append(f"{entry}  {hint}" if hint else entry)
+        lines.append("")
+    return "\n".join(lines).strip() or "No commands."
+
+
+def run_script(path: Path) -> str:
+    root = SCRIPTS.resolve()
     try:
-        secs = float(Path("/proc/uptime").read_text().split()[0])
-        mins = int(secs // 60)
-        return f"{host}\nup {mins} min"
-    except OSError:
-        return host
+        real = path.resolve()
+        real.relative_to(root)
+    except ValueError:
+        return "forbidden"
+    if not real.is_file() or real.suffix != ".sh":
+        return "forbidden"
+    try:
+        proc = subprocess.run(
+            [str(real)],
+            capture_output=True,
+            text=True,
+            timeout=TIMEOUT,
+            check=False,
+        )
+    except PermissionError:
+        return "not executable"
+    except subprocess.TimeoutExpired:
+        return "timeout"
+    out = ((proc.stdout or "") + (proc.stderr or "")).strip() or "(empty)"
+    if len(out) > LIMIT:
+        out = out[:LIMIT] + "\n…"
+    return out
 
 
-def handle(token: str, owner: str, msg: dict) -> None:
+def command_name(text: str) -> str:
+    raw = text.split(None, 1)[0]
+    return raw.split("@", 1)[0].lower()
+
+
+def handle(token: str, owner: str, cmds: dict[str, Path], msg: dict) -> None:
     chat = msg.get("chat") or {}
     chat_id = chat.get("id")
     if chat_id is None:
@@ -71,15 +134,20 @@ def handle(token: str, owner: str, msg: dict) -> None:
         log.info("ignored chat_id=%s", chat_id)
         return
     text = (msg.get("text") or "").strip()
-    if text.startswith("/status"):
-        send(token, chat_id, status_text())
-    elif text.startswith("/start") or text.startswith("/help"):
-        send(token, chat_id, "Commands: /status")
-    elif text:
-        send(token, chat_id, "Commands: /status")
+    if not text:
+        return
+    cmd = command_name(text)
+    if cmd in {"/start", "/help"}:
+        send(token, chat_id, help_text(cmds))
+        return
+    path = cmds.get(cmd)
+    if path is None:
+        send(token, chat_id, help_text(cmds))
+        return
+    send(token, chat_id, run_script(path))
 
 
-def loop(token: str, owner: str) -> None:
+def loop(token: str, owner: str, cmds: dict[str, Path]) -> None:
     offset = 0
     while not STOP:
         try:
@@ -96,18 +164,20 @@ def loop(token: str, owner: str) -> None:
             offset = int(upd.get("update_id", offset)) + 1
             msg = upd.get("message") or upd.get("edited_message")
             if isinstance(msg, dict):
-                handle(token, owner, msg)
+                handle(token, owner, cmds, msg)
 
 
 def main() -> None:
     global STOP
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", datefmt="%H:%M:%S")
     load_env_file(Path("/etc/telegram/telegram.env"))
-    load_env_file(Path(__file__).resolve().parent.parent / "telegram.env")
+    load_env_file(ROOT / "telegram.env")
     token = env("TELEGRAM_BOT_TOKEN")
     if not token:
         log.error("TELEGRAM_BOT_TOKEN is empty")
         sys.exit(1)
+    cmds = discover(SCRIPTS)
+    log.info("%d commands from %s", len(cmds), SCRIPTS)
 
     def stop(_signum: int, _frame: object) -> None:
         global STOP
@@ -116,7 +186,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     log.info("polling as %s", socket.gethostname().split(".")[0])
-    loop(token, env("TELEGRAM_CHAT_ID"))
+    loop(token, env("TELEGRAM_CHAT_ID"), cmds)
 
 
 if __name__ == "__main__":

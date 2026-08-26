@@ -36,6 +36,7 @@ fi
 
 # shellcheck disable=SC1091
 source "$ETC/wifi-fallback.env"
+AP_PASSWORD=${AP_PASSWORD-}
 
 if [[ ${#AP_PASSWORD} -lt 8 ]]; then
   echo "AP_PASSWORD must be at least 8 characters (WPA2)." >&2
