@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 first_boot/wifi-fallback/wifi-fallback.env
 cicd/deploy.env
+telegram/telegram.env

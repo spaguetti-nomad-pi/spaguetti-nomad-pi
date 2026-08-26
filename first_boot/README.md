@@ -29,3 +29,5 @@ sudo ./first_boot/wifi-fallback/install.sh
 Logs: `journalctl -u wifi-fallback -f`
 
 Details and tests: [wifi-fallback/README.md](wifi-fallback/README.md).
+
+Telegram bot (talk to the Pi with no UI): [telegram/README.md](../telegram/README.md).

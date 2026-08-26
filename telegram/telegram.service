@@ -1,0 +1,15 @@
+[Unit]
+Description=Telegram bot for this Pi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/telegram/telegram.env
+WorkingDirectory=/opt/telegram
+ExecStart=/usr/bin/python3 /opt/telegram/src/bot.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
