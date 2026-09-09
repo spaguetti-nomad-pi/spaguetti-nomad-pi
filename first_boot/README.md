@@ -20,14 +20,22 @@ On boot the Pi tries known networks (and Ethernet). If there is no internet for 
 
 Join from your phone, pick the venue WiFi, and the AP shuts down.
 
-From the repo root (your fork; see [cicd/README.md](../cicd/README.md)):
+On the Pi (clones public `main` if this tree is not already there):
 
 ```bash
-sudo ./first_boot/wifi-fallback/install.sh
+curl -fsSL https://raw.githubusercontent.com/spaguetti-nomad-pi/spaguetti-nomad-pi/main/first_boot/setup.sh | bash
+```
+
+Or, from a clone:
+
+```bash
+sudo ./first_boot/setup.sh
 ```
 
 Logs: `journalctl -u wifi-fallback -f`
 
-Details and tests: [wifi-fallback/README.md](wifi-fallback/README.md).
+To try the AP: disconnect Ethernet and forget/disable saved WiFi. After ~45s join `{hostname}-setup` / `raspi-setup` and open `http://10.42.0.1`.
+
+Details: [wifi-fallback/README.md](wifi-fallback/README.md).
 
 Telegram bot (talk to the Pi with no UI): [telegram/README.md](../telegram/README.md).

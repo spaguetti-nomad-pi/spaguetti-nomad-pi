@@ -19,11 +19,13 @@ Ethernet with a network: the AP **does not** start (SSH still works).
 
 ## Install
 
-From the repo root on the Pi:
+On the Pi:
 
 ```bash
-sudo ./first_boot/wifi-fallback/install.sh
+curl -fsSL https://raw.githubusercontent.com/spaguetti-nomad-pi/spaguetti-nomad-pi/main/first_boot/setup.sh | bash
 ```
+
+That clones public `main` if needed and runs `install.sh`. From an existing clone: `sudo ./first_boot/setup.sh`.
 
 Copy `wifi-fallback.env.example` to `wifi-fallback.env` if you want local overrides (gitignored). On the Pi the live file is `/etc/wifi-fallback/wifi-fallback.env` (not overwritten on reinstall).
 
