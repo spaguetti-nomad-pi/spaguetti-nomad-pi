@@ -51,6 +51,7 @@ class Config:
     prefix = env("AP_PREFIX", "24")
     check_interval = int(env("CHECK_INTERVAL", "15"))
     offline_grace = int(env("OFFLINE_GRACE", "45"))
+    boot_grace = int(env("BOOT_GRACE", "120"))
     connect_timeout = int(env("CONNECT_TIMEOUT", "30"))
 
     @classmethod
@@ -222,6 +223,24 @@ class NM:
         if NM.wifi_client_active() and NM.ping():
             return True
         return False
+
+    @staticmethod
+    def wifi_client_profiles() -> list[str]:
+        result = nmcli("-t", "-f", "NAME,TYPE,AUTOCONNECT", "connection", "show")
+        names: list[str] = []
+        for line in result.stdout.splitlines():
+            name, ctype, auto = parse_nmcli_line(line, 3)
+            if ctype == "802-11-wireless" and name != Config.connection and auto == "yes":
+                names.append(name)
+        return names
+
+    @staticmethod
+    def activate_saved_wifi() -> None:
+        for name in NM.wifi_client_profiles():
+            log.info("trying saved WiFi %s", name)
+            nmcli("--wait", "25", "connection", "up", name, timeout=35)
+            if NM.has_upstream() or NM.wifi_client_active():
+                return
 
     @staticmethod
     def scan(rescan: bool = True) -> list[dict[str, Any]]:
@@ -618,19 +637,25 @@ def loop() -> None:
     NM.wait_ready()
     portal = Portal()
     offline_since: float | None = None
+    started = time.time()
+    saved = NM.wifi_client_profiles()
+    if saved:
+        log.info("saved WiFi: %s", ", ".join(saved))
+        NM.activate_saved_wifi()
+    else:
+        try:
+            refresh_scan(rescan=True)
+        except Exception as exc:
+            log.warning("initial scan failed: %s", exc)
 
-    try:
-        refresh_scan(rescan=True)
-    except Exception as exc:
-        log.warning("initial scan failed: %s", exc)
-
-    log.info("watching connectivity (grace %ss)", Config.offline_grace)
+    log.info("watching connectivity (grace %ss, boot %ss)", Config.offline_grace, Config.boot_grace)
 
     while not STATE.stop.is_set():
         req = STATE.take_connect()
         if req:
             try_user_connect(portal, req["ssid"], req["password"])
             offline_since = None
+            saved = NM.wifi_client_profiles()
             continue
 
         if STATE.take_rescan() and STATE.snapshot()["state"] == "ap":
@@ -656,16 +681,28 @@ def loop() -> None:
             idle(Config.check_interval)
             continue
 
+        booting = saved and (time.time() - started) < Config.boot_grace
+        if booting and NM.wifi_client_active():
+            STATE.set_mode("offline")
+            idle(Config.check_interval)
+            continue
+
         if offline_since is None:
             offline_since = time.time()
+        grace = Config.boot_grace if booting else Config.offline_grace
         waited = time.time() - offline_since
-        if waited < Config.offline_grace:
+        if waited < grace:
             STATE.set_mode("offline")
-            idle(min(Config.check_interval, Config.offline_grace - waited))
+            idle(min(Config.check_interval, grace - waited))
             continue
 
         if not NM.ap_active():
             try:
+                if saved:
+                    NM.activate_saved_wifi()
+                    if NM.has_upstream() or NM.wifi_client_active():
+                        offline_since = None
+                        continue
                 if not STATE.snapshot()["networks"]:
                     refresh_scan(rescan=True)
                 raise_ap(portal)
@@ -696,6 +733,7 @@ def main() -> None:
     Config.prefix = env("AP_PREFIX", Config.prefix)
     Config.check_interval = int(env("CHECK_INTERVAL", str(Config.check_interval)))
     Config.offline_grace = int(env("OFFLINE_GRACE", str(Config.offline_grace)))
+    Config.boot_grace = int(env("BOOT_GRACE", str(Config.boot_grace)))
     Config.connect_timeout = int(env("CONNECT_TIMEOUT", str(Config.connect_timeout)))
 
     def handle_stop(_signum: int, _frame: Any) -> None:
