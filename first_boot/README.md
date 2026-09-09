@@ -1,41 +1,70 @@
 # First boot
 
-NVMe flash, first boot, and WiFi fallback. CI/CD (fork → your Pi): [cicd/README.md](../cicd/README.md).
+NVMe flash, first login, and the WiFi fallback AP. Later deploys (your fork → your Pi): [cicd/README.md](../cicd/README.md).
 
 **OS:** Raspberry Pi OS Lite 64-bit (Bookworm) on NVMe
 
-## First boot
+## Flash Lite onto the NVMe
 
-If you start from an SD card with Desktop and want Lite on the NVMe, follow [steps.MD](steps.MD).
+If the Pi still boots Desktop from an SD card, follow [steps.MD](steps.MD). When it is on Lite and you have SSH, come back here.
 
-## WiFi fallback
+```bash
+ssh YOUR_USER@YOUR_HOSTNAME.local
+```
 
-On boot the Pi tries known networks (and Ethernet). If there is no internet for ~45s, it raises a WPA2 AP:
+## Install the WiFi fallback
 
-| | |
-| --- | --- |
-| SSID | `{hostname}-setup` |
-| Password | `raspi-setup` |
-| Portal | `http://10.42.0.1` |
-
-Join from your phone, pick the venue WiFi, and the AP shuts down.
-
-On the Pi (clones public `main` if this tree is not already there):
+On the Pi. This clones public `main` into `~/spaguetti-nomad-pi` if needed and enables the service:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/spaguetti-nomad-pi/spaguetti-nomad-pi/main/first_boot/setup.sh | bash
 ```
 
-Or, from a clone:
+Same thing, without `curl | bash`:
 
 ```bash
+sudo apt-get update && sudo apt-get install -y git
+git clone --depth 1 --branch main https://github.com/spaguetti-nomad-pi/spaguetti-nomad-pi.git ~/spaguetti-nomad-pi
+cd ~/spaguetti-nomad-pi
 sudo ./first_boot/setup.sh
 ```
 
-Logs: `journalctl -u wifi-fallback -f`
+If the repo is already there:
 
-To try the AP: disconnect Ethernet and forget/disable saved WiFi. After ~45s join `{hostname}-setup` / `raspi-setup` and open `http://10.42.0.1`.
+```bash
+cd ~/spaguetti-nomad-pi
+sudo ./first_boot/setup.sh
+```
+
+A good install ends with something like:
+
+```text
+Installed wifi-fallback.
+  AP SSID:     SPAGUETI-setup
+  AP password: raspi-setup
+  Portal:      http://10.42.0.1
+  Logs:        journalctl -u wifi-fallback -f
+```
+
+SSID is `{hostname}-setup`. Password defaults to `raspi-setup`.
+
+## Check it
+
+```bash
+systemctl status wifi-fallback --no-pager
+journalctl -u wifi-fallback -f
+```
+
+The AP does **not** appear while the Pi has internet (saved WiFi or Ethernet). That is expected.
+
+## Test the AP
+
+1. Leave SSH open or not — it will drop.
+2. Unplug Ethernet. Forget or disable the current WiFi on the Pi (or kick it off the router).
+3. Wait ~45s. `{hostname}-setup` should show up on your phone.
+4. Join with `raspi-setup`. If the portal does not open, go to `http://10.42.0.1`.
+5. Pick the venue network. The AP goes down; SSH on the LAN should work again.
 
 Details: [wifi-fallback/README.md](wifi-fallback/README.md).
 
-Telegram bot (talk to the Pi with no UI): [telegram/README.md](../telegram/README.md).
+Headless control after that: [telegram/README.md](../telegram/README.md).
