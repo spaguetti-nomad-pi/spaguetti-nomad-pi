@@ -14,11 +14,11 @@ DEST_REAL=$(realpath "$DEST")
 if [[ $SRC_REAL != "$DEST_REAL" ]]; then
   rsync -a --delete \
     --exclude "cicd/deploy.env" \
-    --exclude "first_boot/wifi-fallback/wifi-fallback.env" \
-    --exclude "telegram/telegram.env" \
+    --exclude "apps/wifi-fallback/wifi-fallback.env" \
+    --exclude "apps/telegram/telegram.env" \
     "$SRC_REAL/" "$DEST_REAL/"
 fi
 
 echo "Deployed $SRC_REAL → $DEST_REAL"
-sudo "$DEST_REAL/first_boot/wifi-fallback/install.sh"
-sudo "$DEST_REAL/telegram/install.sh"
+sudo "$DEST_REAL/apps/install.sh"
+sudo apps up

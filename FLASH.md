@@ -4,7 +4,7 @@ Move from an SD card running Raspberry Pi OS **Desktop** to **Lite** on the NVMe
 
 Wipe and flash commands destroy the target disk. Confirm the device with `lsblk` before every destructive step. The SD is `mmcblk0`; the NVMe is usually `nvme0n1`.
 
-When Lite is up and SSH works, install the fallback AP from [README.md](README.md).
+When Lite is up and SSH works, bootstrap once: [apps/README.md](apps/README.md).
 
 ---
 
@@ -114,4 +114,4 @@ nmap -sn 192.168.0.0/24
 ssh YOUR_USER@192.168.0.x
 ```
 
-Then install the AP: [README.md](README.md).
+Then bootstrap once: [apps/README.md](apps/README.md).

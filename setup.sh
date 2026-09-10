@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Clone public main if needed, then install the WiFi fallback AP.
+# Clone public main if needed, then apps install + apps up.
 set -euo pipefail
 
 REPO_URL=https://github.com/spaguetti-nomad-pi/spaguetti-nomad-pi.git
@@ -16,8 +16,8 @@ as_user() {
 }
 
 self=$(readlink -f "${BASH_SOURCE[0]:-/dev/null}" 2>/dev/null || true)
-if [[ -n $self && -x $(dirname "$self")/wifi-fallback/install.sh ]]; then
-  ROOT=$(cd "$(dirname "$self")/.." && pwd)
+if [[ -n $self && -x $(dirname "$self")/apps/ctl.sh ]]; then
+  ROOT=$(cd "$(dirname "$self")" && pwd)
 else
   if ! command -v git >/dev/null; then
     export DEBIAN_FRONTEND=noninteractive
@@ -33,4 +33,5 @@ else
   ROOT=$DEST
 fi
 
-exec sudo "$ROOT/first_boot/wifi-fallback/install.sh"
+sudo "$ROOT/apps/install.sh"
+exec sudo apps up

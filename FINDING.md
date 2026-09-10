@@ -4,7 +4,7 @@ This is not “scan the LAN and SSH.” It is how a host *exists* on a network, 
 
 Assume you already know TCP/IP, processes, and public-key crypto. The rest is field work.
 
-If the Pi is offline on purpose, this document does not apply: it will raise `{hostname}-setup` (see [first_boot/README.md](first_boot/README.md)) and you join *that* AP, not the venue LAN.
+If the Pi is offline on purpose, this document does not apply: it will raise `{hostname}-setup` (see [apps/wifi-fallback/README.md](apps/wifi-fallback/README.md)) and you join *that* AP, not the venue LAN.
 
 ---
 
@@ -329,7 +329,7 @@ A portable Pi will change prefix every time you change building. The design in t
 The durable reachability story is:
 
 - **Same LAN, this document** — mDNS + SSH + a key that travels with you.
-- **No LAN, first_boot Wi‑Fi fallback** — you become the AP’s client at `10.42.0.1`.
+- **No LAN, Wi‑Fi fallback** — you become the AP’s client at `10.42.0.1`.
 - **Anywhere, later** — an overlay (Tailscale, WireGuard, …) so you stop caring about the venue prefix.
 
 Until the overlay exists, treat every IPv4 as disposable and every host key as sacred.

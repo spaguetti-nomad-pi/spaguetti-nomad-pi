@@ -10,7 +10,7 @@ you  --push-->  your fork (GitHub)
               your Pi (runner already connected)
                     |
                     v
-         sync repo to DEPLOY_DIR + install wifi-fallback
+         sync repo to DEPLOY_DIR + apps install/up
 ```
 
 Each person uses **their fork** and **their Pi**. Do not add a runner on the upstream repo ([spaguetti-nomad-pi/spaguetti-nomad-pi](https://github.com/spaguetti-nomad-pi/spaguetti-nomad-pi)).

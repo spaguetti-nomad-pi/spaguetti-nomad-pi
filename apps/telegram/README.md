@@ -18,13 +18,14 @@ Same scripts work over SSH: `./scripts/health/status.sh`.
 3. On the Pi:
 
 ```bash
-cp telegram/telegram.env.example telegram/telegram.env
+cp apps/telegram/telegram.env.example apps/telegram/telegram.env
 ```
 
 Put the token in `TELEGRAM_BOT_TOKEN`, then:
 
 ```bash
-sudo ./telegram/install.sh
+sudo apps enable telegram
+sudo apps up telegram
 journalctl -u telegram -f
 ```
 
@@ -43,7 +44,7 @@ Only that chat is answered. User text is never passed to the shell.
 | `/status` | hostname, load, memory, disk, SoC temp |
 | `/net` | IPv4 addresses and default route |
 | `/updates` | pending apt upgrades (cache only, does not install) |
-| `/services` | wifi-fallback, telegram, ssh |
+| `/services` | enabled apps (`apps status`) |
 
 **security**
 
@@ -57,5 +58,6 @@ Read-only. No reboot, upgrade, or kill from Telegram.
 ## Uninstall
 
 ```bash
-sudo ./telegram/uninstall.sh
+sudo apps disable telegram
+sudo ./apps/telegram/uninstall.sh
 ```
