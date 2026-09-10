@@ -43,7 +43,7 @@ Same SSID is not same L2. Band steering, a 2.4 / 5 GHz split that is two BSSIDs,
 | `Connection refused` | IP is right; nothing listens on that port |
 | `Permission denied (publickey)` | you reached **sshd**; the credential is wrong |
 
-On a connected route (`192.168.0.0/24 dev en0`), the kernel does not “lack a route” to `192.168.0.59`. It sends ARP. If ARP never completes, macOS/Linux surfaces `EHOSTUNREACH` — “No route to host.” The routing table is fine. The neighbor table is empty.
+On a connected route (`192.168.0.0/24 dev en0`), the kernel does not “lack a route” to another host on that prefix. It sends ARP. If ARP never completes, macOS/Linux surfaces `EHOSTUNREACH` — “No route to host.” The routing table is fine. The neighbor table is empty.
 
 ---
 
@@ -54,21 +54,21 @@ DHCP addresses are ephemeral. Do not treat them as identity.
 | Name | Stable? | What it actually is |
 | --- | --- | --- |
 | IPv4 lease | no | a row in the router’s DHCP table |
-| mDNS name (`SPAGUETI.local`) | as stable as the hostname | Avahi/Bonjour publishing A/AAAA + PTR |
+| mDNS name (`pi.local`) | as stable as the hostname | Avahi/Bonjour publishing A/AAAA + PTR |
 | MAC | yes, until you clone it | 48-bit L2 address; Raspberry Pi Trading OUIs include `2c:cf:67`, `d8:3a:dd`, `e4:5f:01`, `b8:27:eb` |
 | SSH host key | yes, until you reimage | the cryptographic identity of *that* `sshd` |
 
 The useful identity for humans is **hostname + host key**. The useful identity for L2 forensics is the **MAC**. The lease is a cache.
 
-`~/.ssh/known_hosts` is a ledger of host keys you already accepted (TOFU). If you ever SSH’d to `spagueti.local` or to an old lease, those lines are still there. They tell you “this key existed,” not “this IP is live.”
+`~/.ssh/known_hosts` is a ledger of host keys you already accepted (TOFU). If you ever SSH’d to `pi.local` or to an old lease, those lines are still there. They tell you “this key existed,” not “this IP is live.”
 
-`~/.ssh/config` `HostName 192.168.1.41` is a *stale cache with extra privileges*. It will send you to a dead address on another prefix the moment the Pi gets a new lease. Prefer:
+`~/.ssh/config` `HostName 192.168.1.50` is a *stale cache with extra privileges*. It will send you to a dead address on another prefix the moment the Pi gets a new lease. Prefer:
 
 ```
 Host raspi
-    HostName spagueti.local
-    User greko
-    IdentityFile ~/.ssh/id_ed25519_raspi
+    HostName pi.local
+    User YOUR_USER
+    IdentityFile ~/.ssh/id_ed25519_pi
     IdentitiesOnly yes
     ServerAliveInterval 60
 ```
@@ -82,8 +82,8 @@ Host raspi
 Every IPv6 interface has a link-local address in `fe80::/10`. It is scoped: `fe80::1` on `en0` is not `fe80::1` on `en1`. You must write the scope:
 
 ```bash
-ping6 'fe80::2ecf:67ff:fef0:c7d4%en0'
-ssh greko@fe80::2ecf:67ff:fef0:c7d4%en0
+ping6 'fe80::dea6:32ff:feaa:bbcc%en0'
+ssh YOUR_USER@fe80::dea6:32ff:feaa:bbcc%en0
 ```
 
 The `%en0` is part of the address in the UI. Without it the stack correctly says it does not know which link.
@@ -94,12 +94,12 @@ If the AP did not assign a useful IPv4, or IPv4 unicast is flaky, IPv6 LL still 
 
 SLAAC’s modified EUI-64 (RFC 4291):
 
-1. Take the MAC: `2c:cf:67:f0:c7:d4`
-2. Split in half, insert `ff:fe`: `2c:cf:67:ff:fe:f0:c7:d4`
-3. Flip the U/L bit of the first byte (`2c` → `2e`)
-4. Prefix `fe80::` and compress: `fe80::2ecf:67ff:fef0:c7d4`
+1. Take the MAC: `dc:a6:32:aa:bb:cc`
+2. Split in half, insert `ff:fe`: `dc:a6:32:ff:fe:aa:bb:cc`
+3. Flip the U/L bit of the first byte (`dc` XOR `0x02` → `de`)
+4. Prefix `fe80::` and compress: `fe80::dea6:32ff:feaa:bbcc`
 
-If mDNS gives you a MAC (`SPAGUETI [2c:cf:67:f0:c7:d4]`) you already have the IPv6 LL. You do not need the IPv4 lease to try SSH.
+If mDNS gives you a MAC (`pi [dc:a6:32:aa:bb:cc]`) you already have the IPv6 LL. You do not need the IPv4 lease to try SSH.
 
 Privacy extensions (RFC 4941) add *extra* temporaries. The EUI-64 address usually still exists next to them on a Pi.
 
@@ -128,21 +128,21 @@ macOS:
 ```bash
 dns-sd -t 4 -B _workstation._tcp local.
 dns-sd -t 4 -B _ssh._tcp local.
-dscacheutil -q host -a name SPAGUETI.local
+dscacheutil -q host -a name pi.local
 ```
 
 Linux:
 
 ```bash
 avahi-browse -t _workstation._tcp
-getent hosts SPAGUETI.local
+getent hosts pi.local
 ```
 
 `dns-sd` “Add” on your Wi‑Fi interface means a packet arrived on that link. That is stronger evidence than a DHCP UI screenshot.
 
 Caveat: mDNS caches. A dead host can linger. Cross-check with a neighbor probe (next section) before you believe the IPv4.
 
-`.local` resolution on macOS goes through the system resolver, not `/etc/hosts`. `ping SPAGUETI.local` and `dscacheutil` can disagree with `dig` — `dig` talks to your recursive DNS, which does **not** speak mDNS unless you set up a unicast-DNS bridge.
+`.local` resolution on macOS goes through the system resolver, not `/etc/hosts`. `ping pi.local` and `dscacheutil` can disagree with `dig` — `dig` talks to your recursive DNS, which does **not** speak mDNS unless you set up a unicast-DNS bridge.
 
 ### 4.3 Neighbor tables (ARP / NDP)
 
@@ -175,7 +175,7 @@ Plenty of hosts drop ICMP. Plenty of APs drop client-to-client. You get a pictur
 
 `nmap -sn 192.168.0.0/24` on Ethernet uses ARP and is honest. On Wi‑Fi with isolation it will report *you* and maybe the AP. That is a true picture of reachable L3, not of associated stations.
 
-`nmap -Pn -p 22 192.168.0.59` skips the host-discovery guess and hits the port. Use it when you already have a candidate from mDNS.
+`nmap -Pn -p 22 192.168.0.40` skips the host-discovery guess and hits the port. Use it when you already have a candidate from mDNS.
 
 Do not port-scan the whole prefix “to be sure.” You already have better oracles.
 
@@ -187,17 +187,17 @@ The only authoritative IPv4 list is the DHCP server (the AP’s admin UI, `Statu
 
 ## 5. A real session (compressed)
 
-Laptop: `192.168.0.163/24` on `en0`. SSH config pointed at `192.168.1.41` (another prefix, from another building). That IP was a black hole — correct: it was a **previous lease on a previous LAN**.
+Laptop: `192.168.0.10/24` on `en0`. SSH config pointed at `192.168.1.50` (another prefix, from another building). That IP was a black hole — correct: it was a **previous lease on a previous LAN**.
 
-mDNS names (`SPAGUETI.local`, `raspberrypi.local`) did not resolve at first. A ping-sweep and `nmap -sn` saw only the laptop. Conclusion “the Pi is not on this network” was **wrong**. Conclusion “nothing on this network answers IPv4 unicast discovery” was **right**.
+mDNS names (`pi.local`, `raspberrypi.local`) did not resolve at first. A ping-sweep and `nmap -sn` saw only the laptop. Conclusion “the Pi is not on this network” was **wrong**. Conclusion “nothing on this network answers IPv4 unicast discovery” was **right**.
 
 Then `_workstation._tcp` published:
 
 ```
-SPAGUETI [2c:cf:67:f0:c7:d4]
+pi [dc:a6:32:aa:bb:cc]
 ```
 
-`dscacheutil` returned `192.168.0.59` and `fe80::2ecf:67ff:fef0:c7d4`. IPv4 ping: `No route to host`, ARP incomplete. IPv6 LL ping: 7–44 ms RTT. After that, ARP filled (`2c:cf:67:f0:c7:d4`) and `nmap -Pn -p 22` showed `open`.
+`dscacheutil` returned `192.168.0.40` and `fe80::dea6:32ff:feaa:bbcc`. IPv4 ping: `No route to host`, ARP incomplete. IPv6 LL ping: a few milliseconds. After that, ARP filled and `nmap -Pn -p 22` showed `open`.
 
 SSH:
 
@@ -205,7 +205,7 @@ SSH:
 Permission denied (publickey,password).
 ```
 
-That is success at every layer except auth. The host key was accepted into `known_hosts`. The *user* key in `IdentityFile` is not in that account’s `authorized_keys` (or the user is not `greko`).
+That is success at every layer except auth. The host key was accepted into `known_hosts`. The *user* key in `IdentityFile` is not in that account’s `authorized_keys` (or the username is wrong).
 
 Three distinct bugs, one afternoon:
 
@@ -226,8 +226,8 @@ ssh -o ConnectTimeout=8 \
     -o BatchMode=yes \
     -o IdentitiesOnly=yes \
     -o StrictHostKeyChecking=accept-new \
-    -i ~/.ssh/id_ed25519_raspi \
-    greko@192.168.0.59 \
+    -i ~/.ssh/id_ed25519_pi \
+    YOUR_USER@192.168.0.40 \
     'hostname; hostname -I; uptime'
 ```
 
@@ -248,7 +248,7 @@ On the Pi, as the user you want:
 
 ```bash
 mkdir -p ~/.ssh && chmod 700 ~/.ssh
-# paste the public half of id_ed25519_raspi
+# paste the public half of id_ed25519_pi
 echo 'ssh-ed25519 AAAA... comment' >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
@@ -258,17 +258,17 @@ The private key never leaves the laptop. If you typed a password over SSH “jus
 On the laptop, after a new lease:
 
 ```bash
-ssh-keygen -R 192.168.0.59   # only if you must drop a stale line
+ssh-keygen -R 192.168.0.40   # only if you must drop a stale line
 ```
 
 Better: pin the host key you already trust:
 
 ```
 Host raspi
-    HostName spagueti.local
-    HostKeyAlias spagueti
-    User greko
-    IdentityFile ~/.ssh/id_ed25519_raspi
+    HostName pi.local
+    HostKeyAlias raspi
+    User YOUR_USER
+    IdentityFile ~/.ssh/id_ed25519_pi
     IdentitiesOnly yes
 ```
 
@@ -308,11 +308,11 @@ Ethernet Mac ↔ Pi (or Pi ↔ LAN switch) bypasses every wireless isolation sto
 
 ## 8. Things that look like bugs and are not
 
-**The laptop reports “not associated” and still has `192.168.0.163` on `en0`.** The association UI and the IPv4 stack are different daemons. Believe `ifconfig` / `ip addr` and a default route, not the menu extra.
+**The laptop reports “not associated” and still has an IPv4 on `en0`.** The association UI and the IPv4 stack are different daemons. Believe `ifconfig` / `ip addr` and a default route, not the menu extra.
 
 **`nmap -sn` sees one host: you.** On an isolated BSS that is the expected result. Use mDNS or the DHCP table.
 
-**`SPAGUETI.local` ≠ `spagueti.local` in your head, equal on the wire.** mDNS names are case-insensitive. The hostname on the Pi can still be `SPAGUETI`.
+**`Pi.local` ≠ `pi.local` in your head, equal on the wire.** mDNS names are case-insensitive. The hostname on the Pi can still be mixed-case.
 
 **Ping fails, SSH works** (or the reverse). ICMP and TCP 22 are independent. Never use ping as a proxy for “SSH is down.”
 

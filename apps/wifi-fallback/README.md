@@ -1,6 +1,6 @@
 # WiFi fallback
 
-If the Pi has no internet, it raises a WPA2 AP and a captive portal so you can pick a venue network. It is an app: `apps/wifi-fallback`. First Pi: [FLASH.md](../../FLASH.md) then `setup.sh` at the repo root (`wifi-fallback` is enabled by default).
+If the Pi has no internet, it raises a WPA2 AP and a captive portal so you can pick a venue network. It is an app: `apps/wifi-fallback`. First Pi: [FLASH.md](../../docs/FLASH.md) then `setup.sh` at the repo root (`wifi-fallback` is enabled by default).
 
 | | |
 | --- | --- |

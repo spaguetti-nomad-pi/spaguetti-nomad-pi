@@ -39,7 +39,7 @@ Human accounts start at uid 1000. Everything below is a service user (`sshd`, `a
 
 ## 2. Authentication is a stack, not a password
 
-When you `ssh grekoebb@spagueti.local`:
+When you `ssh YOUR_USER@pi.local`:
 
 ```
 sshd
@@ -171,7 +171,7 @@ That is “members of `sudo` may run anything, after their *user* password.” I
 On the **laptop**, one key per role, not one key for the universe:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_raspi -C "raspi"
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_pi -C "pi"
 ```
 
 The private half never copies to the Pi. The public half does.
@@ -200,7 +200,7 @@ from="192.168.0.0/16,10.0.0.0/8",restrict ssh-ed25519 AAAA... laptop
 Prove the key *before* you disable passwords:
 
 ```bash
-ssh -o BatchMode=yes -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519_raspi user@host 'echo ok'
+ssh -o BatchMode=yes -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519_pi YOUR_USER@host 'echo ok'
 ```
 
 Then, on the Pi, drop a snippet — do not edit the vendor file:
@@ -210,7 +210,7 @@ sudo tee /etc/ssh/sshd_config.d/99-hardening.conf >/dev/null <<'EOF'
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin no
-AllowUsers grekoebb
+AllowUsers YOUR_USER
 EOF
 sudo sshd -t && sudo systemctl reload ssh
 ```
@@ -223,10 +223,10 @@ Client stanza that matches this repo’s machine:
 
 ```
 Host raspi
-    HostName spagueti.local
-    HostKeyAlias spagueti
-    User grekoebb
-    IdentityFile ~/.ssh/id_ed25519_raspi
+    HostName pi.local
+    HostKeyAlias raspi
+    User YOUR_USER
+    IdentityFile ~/.ssh/id_ed25519_pi
     IdentitiesOnly yes
     ServerAliveInterval 60
 ```
@@ -267,15 +267,15 @@ sudo last -F -f /var/log/wtmp.1
 Reading a line:
 
 ```
-grekoebb  pts/0  192.168.0.163  Wed Sep  9 18:47  still logged in
+YOUR_USER  pts/0  192.168.0.10  Wed Sep  9 18:47  still logged in
 ```
 
 - user
 - tty (`pts/0` = SSH, `tty1` = local)
-- origin (`192.168.0.163` or a hostname). `0.0.0.0` or empty on some failed records
+- origin (`192.168.0.10` or a hostname). `0.0.0.0` or empty on some failed records
 - start, end / `still logged in` / `crash`
 
-`sshd` logs `Accepted publickey for grekoebb from 192.168.0.163 port 52311 ssh2: ED25519 SHA256:…`. That fingerprint is the key that got in. Compare it with `ssh-keygen -lf ~/.ssh/id_ed25519_raspi.pub` on the laptop.
+`sshd` logs `Accepted publickey for YOUR_USER from 192.168.0.10 port 52311 ssh2: ED25519 SHA256:…`. That fingerprint is the key that got in. Compare it with `ssh-keygen -lf ~/.ssh/id_ed25519_pi.pub` on the laptop.
 
 Invalid users (`Failed password for invalid user admin`) are noise on a password-open `sshd` facing a LAN. They become a signal if the Pi is ever on a prefix you do not control. Count them; do not obsess.
 
@@ -304,7 +304,7 @@ You have a shell as the human user. Do this in order. Do not skip the verify ste
 8. **Audit accounts:** `getent passwd | awk -F: '$3>=1000 && $3<65534 {print}'`. Every extra human is a decision. `sudo passwd -l` leftovers; `deluser` what you do not want.
 9. **Look back:** `last -n 20`, `sudo journalctl -u ssh --since today`. You should see *your* key acceptances and nothing else you cannot explain.
 
-If you need a second human: `adduser`, put them in `sudo` only if they get uid 0, give them *their* key, never share `id_ed25519_raspi`.
+If you need a second human: `adduser`, put them in `sudo` only if they get uid 0, give them *their* key, never share `id_ed25519_pi`.
 
 ---
 

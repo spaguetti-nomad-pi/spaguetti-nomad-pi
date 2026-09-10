@@ -1,6 +1,6 @@
 # Apps catalog
 
-Every service on the Pi is a folder here. wifi-fallback and Telegram are the first two; Immich and the rest join the same way.
+Every service on the Pi is a folder here. wifi-fallback, Telegram, and Tailscale are the first; Immich and the rest join the same way.
 
 ```
 apps/<name>/
@@ -9,7 +9,7 @@ apps/<name>/
   install.sh    optional, run on `apps up`
 ```
 
-Which ones run is **not** in git. On the Pi: `/etc/apps/enabled`. `apps/install.sh` enables `wifi-fallback` by default. Telegram (needs a token) you enable yourself.
+Which ones run is **not** in git. On the Pi: `/etc/apps/enabled`. `apps/install.sh` enables `wifi-fallback` by default. Telegram (token) and Tailscale (login once) you enable yourself.
 
 ```bash
 sudo ./apps/install.sh
@@ -28,7 +28,7 @@ Telegram `/services` is `apps status`. Deploy is rsync + `apps/install.sh` + `ap
 
 ## First Pi
 
-NVMe flash: [FLASH.md](../FLASH.md). Then once:
+NVMe flash: [FLASH.md](../docs/FLASH.md). Then once:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/spaguetti-nomad-pi/spaguetti-nomad-pi/main/setup.sh | bash

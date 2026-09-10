@@ -39,7 +39,7 @@ Three jobs, three disks. One overlay network that is *yours*, not the café’s.
 
 | Disk | Role | If it dies |
 | --- | --- | --- |
-| **NVMe** (inside the Pi) | Raspberry Pi OS, `/opt`, Docker images, git clone, GitHub runner. Cattle. | Buy another, flash Lite ([FLASH.md](FLASH.md)), `setup.sh`, unlock USB A, `apps up`. Time lost, not data. |
+| **NVMe** (inside the Pi) | Raspberry Pi OS, `/opt`, Docker images, git clone, GitHub runner. Cattle. | Buy another, flash Lite ([docs/FLASH.md](docs/FLASH.md)), `setup.sh`, unlock USB A, `apps up`. Time lost, not data. |
 | **USB A — vault** | Seafile, Immich, Postgres, anything you actually care about. Bind-mounted at `/vault`. | Restore from USB B. No backup → gone. |
 | **USB B — backup** | Encrypted snapshots of `/vault` (restic or similar). Optionally a copy of `/etc/wifi-fallback`, `/etc/telegram`, `/etc/apps` so tokens are not retyped. | You lose history. USB A is still the live copy. |
 
@@ -65,9 +65,9 @@ Same Wi‑Fi (or Ethernet), no client isolation:
 ssh YOUR_USER@YOUR_HOSTNAME.local
 ```
 
-DHCP leases change every building. Put `HostName hostname.local` in `~/.ssh/config`, not last week’s `192.168.x.x`. Keys, not passwords: [USERS.md](USERS.md). How to *find* a box that does not answer ping: [FINDING.md](FINDING.md).
+DHCP leases change every building. Put `HostName hostname.local` in `~/.ssh/config`, not last week’s `192.168.x.x`. Keys, not passwords: [docs/USERS.md](docs/USERS.md). How to *find* a box that does not answer ping: [docs/FINDING.md](docs/FINDING.md).
 
-Same SSID does not mean you can talk to the Pi. Guest networks often allow multicast (mDNS) and drop unicast. That looks like “I see `SPAGUETI.local` but SSH says no route.”
+Same SSID does not mean you can talk to the Pi. Guest networks often allow multicast (mDNS) and drop unicast. That looks like “I see `pi.local` but SSH says no route.”
 
 ### 2. Setup AP (today)
 
@@ -85,11 +85,15 @@ This AP is how you **teach the Pi a Wi‑Fi**. It is not how you serve photos to
 
 Details: [apps/wifi-fallback/README.md](apps/wifi-fallback/README.md).
 
-### 3. Overlay — Tailscale (not built yet)
+### 3. Overlay — Tailscale
+
+Does not need the USB disks. Install this before the vault.
 
 Tailscale is **not** “a LAN carved out of the café Wi‑Fi.” The venue router is not involved. You do not ask it for port forwards.
 
-You install Tailscale on the Pi, the Mac, and the phone, **same account**. Each device opens an **outbound** connection (like Telegram) and joins a private mesh. Each gets a stable `100.x` address and a MagicDNS name (`spagueti.tailnet.ts.net`).
+You install Tailscale on the Pi, the Mac, and the phone, **same account**. Each device opens an **outbound** connection (like Telegram) and joins a private mesh. Each gets a stable `100.x` address and a MagicDNS name (`pi.tailnet.ts.net`).
+
+Pi app: [apps/tailscale/README.md](apps/tailscale/README.md).
 
 That mesh exists whether:
 
@@ -165,8 +169,8 @@ Setup: [apps/telegram/README.md](apps/telegram/README.md).
 
 ## First boot and install (today)
 
-1. Flash Lite on the NVMe: [FLASH.md](FLASH.md).
-2. SSH in ([FINDING.md](FINDING.md) if `.local` is shy).
+1. Flash Lite on the NVMe: [docs/FLASH.md](docs/FLASH.md).
+2. SSH in ([docs/FINDING.md](docs/FINDING.md) if `.local` is shy).
 3. Once:
 
 ```bash
@@ -196,8 +200,8 @@ Do not register a runner on the public upstream.
 | Layer | Job |
 | --- | --- |
 | Disk (USB A/B) | LUKS / restic. Theft of a powered-off backpack. |
-| Network | No inbound from the internet. Services on Tailscale (later), not `wlan0`. Setup AP only when offline. |
-| SSH | One user, one key, `IdentitiesOnly`. Password off once the key works. [USERS.md](USERS.md). |
+| Network | No inbound from the internet. Services on Tailscale, not `wlan0`. Setup AP only when offline. |
+| SSH | One user, one key, `IdentitiesOnly`. Password off once the key works. [docs/USERS.md](docs/USERS.md). |
 | Telegram | One chat id. Scripts, not a shell. |
 | Tailscale account | 2FA; only your devices. |
 | Apps | Secrets in `/etc` or `/vault`, gitignored. Public repo is recipes. |
@@ -210,11 +214,11 @@ The NVMe holds tokens in `/etc` because the machine has to boot. Those are annoy
 
 Done: Lite on NVMe, SSH keys, wifi-fallback (including boot grace for saved Wi‑Fi), Telegram, `apps` catalog, `setup.sh`, fork deploy.
 
-Intended next, in this order:
+Intended next, in this order (disks can wait):
 
-1. USB A: LUKS, `/vault`, unlock
-2. USB B: restic of `/vault`
-3. Tailscale on Pi + Mac + phone
+1. Tailscale on Pi + Mac + phone — [apps/tailscale/README.md](apps/tailscale/README.md)
+2. USB A: LUKS, `/vault`, unlock
+3. USB B: restic of `/vault`
 4. Caddy on the tailnet address
 5. First data app (Immich, no ML on the Pi)
 6. Seafile when the mold has been around the loop once
@@ -227,10 +231,11 @@ AdGuard, Home Assistant, and opening 443 to the world are out of scope until the
 
 | | |
 | --- | --- |
-| [FLASH.md](FLASH.md) | SD → Lite on NVMe |
-| [FINDING.md](FINDING.md) | Finding and reaching the Pi on a LAN |
-| [USERS.md](USERS.md) | Accounts, passwords, SSH keys, who logged in |
+| [docs/FLASH.md](docs/FLASH.md) | SD → Lite on NVMe |
+| [docs/FINDING.md](docs/FINDING.md) | Finding and reaching the Pi on a LAN |
+| [docs/USERS.md](docs/USERS.md) | Accounts, passwords, SSH keys, who logged in |
 | [apps/README.md](apps/README.md) | Catalog and `apps` CLI |
 | [apps/wifi-fallback/README.md](apps/wifi-fallback/README.md) | Offline AP + portal |
 | [apps/telegram/README.md](apps/telegram/README.md) | Bot |
+| [apps/tailscale/README.md](apps/tailscale/README.md) | Mesh overlay |
 | [cicd/README.md](cicd/README.md) | Runner on your fork |
