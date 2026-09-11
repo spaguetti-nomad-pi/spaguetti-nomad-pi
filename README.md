@@ -47,9 +47,9 @@ Cloning the whole NVMe onto B is almost never worth it. Recovery is already “i
 
 LUKS on A (and B, or restic’s own encryption) means: Pi stolen while powered off, without the passphrase, the data disk is noise. A keyfile sitting on the NVMe is the same as not encrypting — anyone with the backpack opens the vault. Unlock with a passphrase (SSH or Telegram) or a key USB that does not travel plugged in all the time.
 
-Two extra USB SSDs plus the NVMe draw current. A powered hub or low-draw disks matter more than “tuning ext4”. Under heavy `apt` the NVMe has already thrown I/O errors; backups should not run at the same time as a transcode.
+Two extra USB drives plus the NVMe draw current. A powered hub or low-draw disks matter more than “tuning ext4”. Under heavy `apt` the NVMe has already thrown I/O errors; backups should not run at the same time as a transcode.
 
-**Not built yet:** LUKS units, `/unlock`, restic. The layout above is the contract the rest of the repo is aiming at. `apps` already fails closed if an app sets `NEEDS_VAULT=1` and `/vault` is not mounted.
+USB B can already be LUKS + ext4 at `/backup` ([docs/BACKUP.md](docs/BACKUP.md)). **Restic** (the actual sync of A → B) waits until Drive/Photos write into `/vault` — there is nothing useful to snapshot yet. USB A (`/vault`, `/unlock`) is not built. `apps` already fails closed if an app sets `NEEDS_VAULT=1` and `/vault` is not mounted.
 
 ---
 
@@ -85,9 +85,9 @@ This AP is how you **teach the Pi a Wi‑Fi**. It is not how you serve photos to
 
 Details: [apps/wifi-fallback/README.md](apps/wifi-fallback/README.md).
 
-### 3. Overlay — Tailscale
+### 3. Overlay — Tailscale (today)
 
-Does not need the USB disks. Install this before the vault.
+Does not need the USB disks. Pi, laptop, and phone join the same tailnet.
 
 Tailscale is **not** “a LAN carved out of the café Wi‑Fi.” The venue router is not involved. You do not ask it for port forwards.
 
@@ -126,7 +126,7 @@ A new app is a compose file plus a Caddy snippet. The phone is already on Tailsc
 
 ## Apps catalog (today)
 
-Every service is a folder. wifi-fallback and Telegram are the first two. Immich and the rest use the same shape.
+Every service is a folder. wifi-fallback, Telegram, and Tailscale are in; Immich and Drive use the same shape.
 
 ```
 apps/<name>/
@@ -210,18 +210,16 @@ The NVMe holds tokens in `/etc` because the machine has to boot. Those are annoy
 
 ---
 
-## Build order (what we do next)
+## Build order
 
-Done: Lite on NVMe, SSH keys, wifi-fallback (including boot grace for saved Wi‑Fi), Telegram, `apps` catalog, `setup.sh`, fork deploy.
+**Done:** Lite on NVMe, SSH keys, wifi-fallback (boot grace), Telegram, `apps` catalog, `setup.sh`, fork deploy, Tailscale on Pi + laptop + phone, USB B formatted (LUKS / `/backup`).
 
-Intended next, in this order (disks can wait):
+**Next:**
 
-1. Tailscale on Pi + Mac + phone — [apps/tailscale/README.md](apps/tailscale/README.md)
-2. USB A: LUKS, `/vault`, unlock
-3. USB B: restic of `/vault`
-4. Caddy on the tailnet address
-5. First data app (Immich, no ML on the Pi)
-6. Seafile when the mold has been around the loop once
+1. USB A: LUKS, `/vault`, unlock
+2. Caddy on the tailnet address
+3. Photos (Immich, no ML on the Pi) and Drive (Seafile) on `/vault`
+4. Restic A → B — the sync, once those apps actually write data
 
 AdGuard, Home Assistant, and opening 443 to the world are out of scope until the above is boring.
 
@@ -234,6 +232,7 @@ AdGuard, Home Assistant, and opening 443 to the world are out of scope until the
 | [docs/FLASH.md](docs/FLASH.md) | SD → Lite on NVMe |
 | [docs/FINDING.md](docs/FINDING.md) | Finding and reaching the Pi on a LAN |
 | [docs/USERS.md](docs/USERS.md) | Accounts, passwords, SSH keys, who logged in |
+| [docs/BACKUP.md](docs/BACKUP.md) | USB B: LUKS, open/close, UAS |
 | [apps/README.md](apps/README.md) | Catalog and `apps` CLI |
 | [apps/wifi-fallback/README.md](apps/wifi-fallback/README.md) | Offline AP + portal |
 | [apps/telegram/README.md](apps/telegram/README.md) | Bot |
